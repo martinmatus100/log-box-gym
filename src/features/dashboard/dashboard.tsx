@@ -9,7 +9,7 @@ export function DashboardPage() {
   const dayWorkouts = useStore(state => state.dayWorkouts);
   const routines = useStore(state => state.routines);
   const settings = useStore(state => state.settings);
-  const setState = useStore(state => (state as any).setState);
+  const setState = useStore(state => state.setState);
   
   const [stats, setStats] = useState({ weekWorkouts: 0, weekExercises: 0, streak: 0, totalRoutines: 0 });
   const [weeklyData, setWeeklyData] = useState<{ label: string; value: number; max: number; color: 'accent' | 'box' }[]>([]);
@@ -49,8 +49,7 @@ export function DashboardPage() {
           return;
         }
         
-        const { set } = useStore.getState();
-        set({
+        setState({
           routines: data.routines || [],
           dayWorkouts: data.dayWorkouts || [],
           settings: data.settings || settings,

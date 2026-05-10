@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2, Edit2, X, Dumbbell, Target, Heart, Zap, Flame, Star, Award, Activity, Users, Shield } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { PillButton } from '../../shared/components';
-import { Routine, RoutineExercise, REST_TIME_OPTIONS, PRESET_EXERCISES } from '../../shared/types';
+import { Routine, RoutineExercise, REST_TIMER_OPTIONS, PRESET_EXERCISES } from '../../shared/types';
 import { generateId } from '../../shared/utils/storage';
 
 const iconMap: Record<string, React.ReactNode> = {

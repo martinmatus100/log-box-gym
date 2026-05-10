@@ -12,6 +12,7 @@ interface AppState {
   
   selectDate: (date: string) => void;
   updateSettings: (settings: Partial<AppSettings>) => void;
+  setState: (state: Partial<AppState>) => void;
   
   addRoutine: (routine: Routine) => void;
   updateRoutine: (routine: Routine) => void;
@@ -50,6 +51,8 @@ export const useStore = create<AppState>()(
       },
 
       selectDate: (date) => set({ selectedDate: date }),
+
+      setState: (state) => set((prev) => ({ ...prev, ...state })),
 
       updateSettings: (newSettings) => set((state) => ({
         settings: { ...state.settings, ...newSettings }
