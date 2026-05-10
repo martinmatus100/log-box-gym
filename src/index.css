@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html {
+    @apply antialiased;
+  }
+  
+  body {
+    @apply bg-bg-deep text-text-primary font-sans;
+    overscroll-behavior: none;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer utilities {
+  .touch-target {
+    @apply min-h-[48px] min-w-[48px];
+  }
+  
+  .pill-shadow {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+  }
+  
+  .glow-accent {
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+  }
+}
