@@ -5,9 +5,10 @@ interface StatCardProps {
   value: string | number;
   label: string;
   variant?: 'default' | 'accent' | 'box';
+  'data-testid'?: string;
 }
 
-export function StatCard({ icon, value, label, variant = 'default' }: StatCardProps) {
+export function StatCard({ icon, value, label, variant = 'default', 'data-testid': testId }: StatCardProps) {
   const variantStyles = {
     default: 'bg-bg-surface border-border-subtle',
     accent: 'bg-accent-glow border-accent/30',
@@ -21,12 +22,12 @@ export function StatCard({ icon, value, label, variant = 'default' }: StatCardPr
   };
 
   return (
-    <div className={`flex flex-col items-center p-4 rounded-card ${variantStyles[variant]}`}>
+    <div data-testid={testId} className={`flex flex-col items-center p-4 rounded-card ${variantStyles[variant]}`}>
       <div className={`mb-2 ${iconStyles[variant]}`}>
         {icon}
       </div>
-      <span className="text-2xl font-bold text-text-primary">{value}</span>
-      <span className="text-xs text-text-secondary mt-1">{label}</span>
+      <span data-testid="stat-value" className="text-2xl font-bold text-text-primary">{value}</span>
+      <span data-testid="stat-label" className="text-xs text-text-secondary mt-1">{label}</span>
     </div>
   );
 }

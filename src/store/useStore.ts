@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Routine, DayWorkout, TimerState, AppSettings, RoutineExercise, CompletedExercise } from '../shared/types';
+import { Routine, DayWorkout, TimerState, AppSettings, CompletedExercise, CompletedSet } from '../shared/types';
 import { generateId, formatDate, zustandStorage } from '../shared/utils/storage';
 
 interface AppState {
@@ -25,7 +25,7 @@ interface AppState {
   
   startWorkout: (dayWorkoutId: string) => void;
   finishWorkout: () => void;
-  completeSet: (dayWorkoutId: string, exerciseId: string) => void;
+  completeSet: (dayWorkoutId: string, exerciseId: string, setData: { weight: number; reps: number }) => void;
   completeExercise: (dayWorkoutId: string, exerciseId: string) => void;
   updateExerciseInWorkout: (dayWorkoutId: string, exerciseId: string, updates: Partial<CompletedExercise>) => void;
   
@@ -113,7 +113,7 @@ export const useStore = create<AppState>()(
               ? { 
                   ...w, 
                   exercises: w.exercises.map((e) => 
-                    e.id === exerciseId ? { ...e, isCompleted: true, completedSets: e.targetSets } : e
+                    e.id === exerciseId ? { ...e, isCompleted: true } : e
                   )
                 }
               : w
@@ -121,17 +121,31 @@ export const useStore = create<AppState>()(
         }));
       },
 
-      completeSet: (dayWorkoutId, exerciseId) => {
+      completeSet: (dayWorkoutId, exerciseId, setData) => {
         set((state) => ({
           dayWorkouts: state.dayWorkouts.map((w) => 
             w.id === dayWorkoutId 
               ? { 
                   ...w, 
-                  exercises: w.exercises.map((e) => 
-                    e.id === exerciseId 
-                      ? { ...e, completedSets: (e.completedSets || 0) + 1 }
-                      : e
-                  )
+                  exercises: w.exercises.map((e) => {
+                    if (e.id !== exerciseId) return e;
+                    
+                    const newSet: CompletedSet = {
+                      setNumber: e.completedSets.length + 1,
+                      weight: setData.weight,
+                      reps: setData.reps,
+                      isCompleted: true,
+                    };
+                    
+                    const newCompletedSets = [...e.completedSets, newSet];
+                    const isExerciseCompleted = newCompletedSets.length >= e.targetSets;
+                    
+                    return { 
+                      ...e, 
+                      completedSets: newCompletedSets,
+                      isCompleted: isExerciseCompleted
+                    };
+                  })
                 }
               : w
           )

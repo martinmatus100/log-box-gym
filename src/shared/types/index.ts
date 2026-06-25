@@ -2,12 +2,11 @@ export type WorkoutMode = 'gym' | 'boxing';
 
 export type DrillType = 'heavy_bag' | 'sparring' | 'shadowboxing' | 'pad_work' | 'speed_bag' | 'footwork';
 
-export interface GymSet {
+export interface SupersetGroup {
   id: string;
-  reps: number;
-  weight: number;
-  completed: boolean;
-  toFailure: boolean;
+  name: string;
+  exerciseIds: string[];
+  restBetweenExercises: number;
 }
 
 export interface RoutineExercise {
@@ -17,13 +16,22 @@ export interface RoutineExercise {
   targetReps: number;
   restSeconds: number;
   toFailure: boolean;
+  supersetId?: string;
 }
 
 export interface Routine {
   id: string;
   name: string;
   exercises: RoutineExercise[];
+  supersets: SupersetGroup[];
   createdAt: number;
+}
+
+export interface CompletedSet {
+  setNumber: number;
+  weight: number;
+  reps: number;
+  isCompleted: boolean;
 }
 
 export interface CompletedExercise {
@@ -32,11 +40,10 @@ export interface CompletedExercise {
   targetSets: number;
   targetReps: number;
   restSeconds: number;
-  completedSets: number;
-  completedReps: number;
   toFailure: boolean;
   isCompleted: boolean;
-  weights: number[];
+  completedSets: CompletedSet[];
+  supersetId?: string;
 }
 
 export interface DayWorkout {
