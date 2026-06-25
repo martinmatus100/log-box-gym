@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Plus, Trash2, Edit2, X, Dumbbell, Target, Heart, Zap, Flame, Star, Award, Activity, Users, Shield } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Dumbbell, Target, Heart, Zap, Flame, Star, Award, Activity, Users, Shield, Link, Check } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { PillButton } from '../../shared/components';
-import { Routine, RoutineExercise, REST_TIMER_OPTIONS, PRESET_EXERCISES } from '../../shared/types';
+import { Routine, RoutineExercise, SupersetGroup, REST_TIMER_OPTIONS, PRESET_EXERCISES } from '../../shared/types';
 import { generateId } from '../../shared/utils/storage';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -45,11 +45,11 @@ export function RoutinesPage() {
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+        <h1 data-testid="routines-title" className="text-2xl font-bold text-text-primary flex items-center gap-2">
           <Dumbbell className="w-6 h-6 text-accent" />
           Rutinas
         </h1>
-        <PillButton variant="primary" onClick={() => setShowForm(true)}>
+        <PillButton data-testid="new-routine-btn" variant="primary" onClick={() => setShowForm(true)}>
           <Plus className="w-4 h-4 mr-1" />
           Nueva
         </PillButton>
@@ -74,7 +74,7 @@ export function RoutinesPage() {
         />
       )}
 
-      <div className="flex flex-col gap-3">
+      <div data-testid="routines-list" className="flex flex-col gap-3">
         {routines.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-16 h-16 rounded-full bg-bg-surface flex items-center justify-center mb-4">
@@ -112,7 +112,10 @@ interface RoutineFormProps {
 function RoutineForm({ initialRoutine, onSave, onCancel }: RoutineFormProps) {
   const [name, setName] = useState(initialRoutine?.name || '');
   const [exercises, setExercises] = useState<RoutineExercise[]>(initialRoutine?.exercises || []);
+  const [supersets, setSupersets] = useState<SupersetGroup[]>(initialRoutine?.supersets || []);
   const [showExerciseForm, setShowExerciseForm] = useState(false);
+  const [showSupersetForm, setShowSupersetForm] = useState(false);
+  const [editingSuperset, setEditingSuperset] = useState<SupersetGroup | null>(null);
 
   const handleSave = () => {
     if (!name.trim()) return;
@@ -121,6 +124,7 @@ function RoutineForm({ initialRoutine, onSave, onCancel }: RoutineFormProps) {
       id: initialRoutine?.id || generateId(),
       name: name.trim(),
       exercises,
+      supersets,
       createdAt: initialRoutine?.createdAt || Date.now(),
     };
     
@@ -134,12 +138,47 @@ function RoutineForm({ initialRoutine, onSave, onCancel }: RoutineFormProps) {
 
   const removeExercise = (exerciseId: string) => {
     setExercises(exercises.filter(e => e.id !== exerciseId));
+    setSupersets(supersets.map(s => ({
+      ...s,
+      exerciseIds: s.exerciseIds.filter(id => id !== exerciseId)
+    })).filter(s => s.exerciseIds.length >= 2));
+  };
+
+  const addSuperset = (superset: SupersetGroup) => {
+    if (editingSuperset) {
+      setSupersets(supersets.map(s => s.id === editingSuperset.id ? superset : s));
+    } else {
+      setSupersets([...supersets, superset]);
+    }
+    setShowSupersetForm(false);
+    setEditingSuperset(null);
+  };
+
+  const removeSuperset = (supersetId: string) => {
+    const superset = supersets.find(s => s.id === supersetId);
+    if (superset) {
+      setSupersets(supersets.filter(s => s.id !== supersetId));
+      setExercises(exercises.map(ex => 
+        superset.exerciseIds.includes(ex.id) 
+          ? { ...ex, supersetId: undefined }
+          : ex
+      ));
+    }
+  };
+
+  const getSupersetForExercise = (exerciseId: string) => {
+    return supersets.find(s => s.exerciseIds.includes(exerciseId));
+  };
+
+  const getExercisesNotInSuperset = () => {
+    const supersetExerciseIds = supersets.flatMap(s => s.exerciseIds);
+    return exercises.filter(e => !supersetExerciseIds.includes(e.id));
   };
 
   return (
     <div className="p-4 rounded-card bg-bg-surface border border-border-subtle">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-text-primary">
+        <h3 data-testid="routine-form-title" className="text-lg font-semibold text-text-primary">
           {initialRoutine ? 'Editar Rutina' : 'Nueva Rutina'}
         </h3>
         <button onClick={onCancel} className="p-2 rounded-full text-text-secondary hover:text-text-primary">
@@ -151,6 +190,7 @@ function RoutineForm({ initialRoutine, onSave, onCancel }: RoutineFormProps) {
         <div>
           <label className="text-sm text-text-secondary mb-2 block">Nombre</label>
           <input
+            data-testid="routine-name-input"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -162,26 +202,79 @@ function RoutineForm({ initialRoutine, onSave, onCancel }: RoutineFormProps) {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-text-secondary">Ejercicios ({exercises.length})</label>
-            <button
-              onClick={() => setShowExerciseForm(true)}
-              className="text-xs text-accent hover:underline"
-            >
-              + Agregar
-            </button>
+            <div className="flex gap-2">
+              <button
+                data-testid="add-superset-btn"
+                onClick={() => {
+                  setEditingSuperset(null);
+                  setShowSupersetForm(true);
+                }}
+                className="text-xs text-accent hover:underline flex items-center gap-1"
+              >
+                <Link className="w-3 h-3" /> Superserie
+              </button>
+              <button
+                data-testid="add-exercise-btn"
+                onClick={() => setShowExerciseForm(true)}
+                className="text-xs text-accent hover:underline"
+              >
+                + Agregar
+              </button>
+            </div>
           </div>
-          <div className="flex flex-col gap-2">
-            {exercises.map((exercise) => (
-              <div key={exercise.id} className="flex items-center gap-2 p-3 rounded-full bg-bg-elevated">
-                <span className="text-accent">{getExerciseIcon(exercise.name)}</span>
-                <span className="flex-1 text-text-primary">{exercise.name}</span>
-                <span className="text-text-secondary text-sm">{exercise.targetSets}x{exercise.targetReps}</span>
-                <span className="text-text-secondary text-sm">{exercise.restSeconds === 90 ? '1:30' : '2:00'}</span>
-                {exercise.toFailure && <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent">AF</span>}
-                <button onClick={() => removeExercise(exercise.id)} className="p-1 text-text-secondary hover:text-danger">
-                  <X className="w-4 h-4" />
-                </button>
+          <div data-testid="exercises-list" className="flex flex-col gap-2">
+            {supersets.map((superset) => (
+              <div key={superset.id} className="p-3 rounded-card bg-accent/10 border border-accent/30">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-accent flex items-center gap-1">
+                    <Link className="w-3 h-3" /> {superset.name}
+                  </span>
+                  <div className="flex gap-1">
+                    <button onClick={() => {
+                      setEditingSuperset(superset);
+                      setShowSupersetForm(true);
+                    }} className="p-1 text-text-secondary hover:text-accent">
+                      <Edit2 className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => removeSuperset(superset.id)} className="p-1 text-text-secondary hover:text-danger">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {superset.exerciseIds.map((exId) => {
+                    const exercise = exercises.find(e => e.id === exId);
+                    if (!exercise) return null;
+                    return (
+                      <div key={exId} className="flex items-center gap-2 text-sm">
+                        <span className="text-accent">{getExerciseIcon(exercise.name)}</span>
+                        <span className="text-text-primary">{exercise.name}</span>
+                        <span className="text-text-secondary text-xs">{exercise.targetSets}x{exercise.targetReps}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ))}
+            
+            {exercises.map((exercise) => {
+              const superset = getSupersetForExercise(exercise.id);
+              if (superset) return null;
+              
+              return (
+                <div key={exercise.id} data-testid={`exercise-item-${exercise.id}`} className="flex items-center gap-2 p-3 rounded-full bg-bg-elevated">
+                  <span className="text-accent">{getExerciseIcon(exercise.name)}</span>
+                  <span className="flex-1 text-text-primary">{exercise.name}</span>
+                  <span className="text-text-secondary text-sm">{exercise.targetSets}x{exercise.targetReps}</span>
+                  <span className="text-text-secondary text-sm">{exercise.restSeconds === 90 ? '1:30' : '2:00'}</span>
+                  {exercise.toFailure && <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent">AF</span>}
+                  <button onClick={() => removeExercise(exercise.id)} className="p-1 text-text-secondary hover:text-danger">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+            
             {exercises.length === 0 && (
               <p className="text-text-secondary text-sm text-center py-2">Sin ejercicios</p>
             )}
@@ -195,10 +288,153 @@ function RoutineForm({ initialRoutine, onSave, onCancel }: RoutineFormProps) {
           />
         )}
 
+        {showSupersetForm && (
+          <SupersetForm
+            exercises={getExercisesNotInSuperset()}
+            initialSuperset={editingSuperset}
+            onSave={addSuperset}
+            onCancel={() => {
+              setShowSupersetForm(false);
+              setEditingSuperset(null);
+            }}
+          />
+        )}
+
         <div className="flex gap-2">
-          <PillButton variant="secondary" onClick={onCancel}>Cancelar</PillButton>
-          <PillButton variant="primary" onClick={handleSave} disabled={!name.trim()}>
+          <PillButton data-testid="cancel-routine-btn" variant="secondary" onClick={onCancel}>Cancelar</PillButton>
+          <PillButton data-testid="save-routine-btn" variant="primary" onClick={handleSave} disabled={!name.trim()}>
             Guardar Rutina
+          </PillButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface SupersetFormProps {
+  exercises: RoutineExercise[];
+  initialSuperset?: SupersetGroup | null;
+  onSave: (superset: SupersetGroup) => void;
+  onCancel: () => void;
+}
+
+function SupersetForm({ exercises, initialSuperset, onSave, onCancel }: SupersetFormProps) {
+  const [name, setName] = useState(initialSuperset?.name || `Superserie ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`);
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>(initialSuperset?.exerciseIds || []);
+  const [restBetweenExercises, setRestBetweenExercises] = useState(initialSuperset?.restBetweenExercises || 30);
+
+  const toggleExercise = (exerciseId: string) => {
+    setSelectedExerciseIds(prev => 
+      prev.includes(exerciseId)
+        ? prev.filter(id => id !== exerciseId)
+        : [...prev, exerciseId]
+    );
+  };
+
+  const handleSave = () => {
+    if (selectedExerciseIds.length < 2) return;
+    
+    const superset: SupersetGroup = {
+      id: initialSuperset?.id || generateId(),
+      name: name.trim(),
+      exerciseIds: selectedExerciseIds,
+      restBetweenExercises,
+    };
+    
+    onSave(superset);
+  };
+
+  return (
+    <div className="p-4 rounded-card bg-bg-elevated border border-border-subtle">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+          <Link className="w-4 h-4 text-accent" />
+          {initialSuperset ? 'Editar Superserie' : 'Nueva Superserie'}
+        </h4>
+        <button onClick={onCancel} className="p-1 rounded-full text-text-secondary hover:text-text-primary">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div>
+          <label className="text-xs text-text-secondary mb-1 block">Nombre</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nombre de la superserie"
+            className="w-full h-10 px-4 bg-bg-deep rounded-full border border-border-subtle text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-text-secondary mb-2 block">
+            Seleccionar ejercicios ({selectedExerciseIds.length} seleccionados, mínimo 2)
+          </label>
+          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+            {exercises.map((exercise) => (
+              <button
+                key={exercise.id}
+                onClick={() => toggleExercise(exercise.id)}
+                className={`flex items-center gap-2 p-2 rounded-card text-left transition-all ${
+                  selectedExerciseIds.includes(exercise.id)
+                    ? 'bg-accent/20 border border-accent'
+                    : 'bg-bg-surface border border-border-subtle'
+                }`}
+              >
+                <span className="text-accent">{getExerciseIcon(exercise.name)}</span>
+                <span className="flex-1 text-sm text-text-primary">{exercise.name}</span>
+                {selectedExerciseIds.includes(exercise.id) && (
+                  <Check className="w-4 h-4 text-accent" />
+                )}
+              </button>
+            ))}
+            {exercises.length === 0 && (
+              <p className="text-text-secondary text-sm text-center py-2">No hay ejercicios disponibles</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-text-secondary mb-1 block">Descanso entre ejercicios</label>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setRestBetweenExercises(60)}
+              className={`flex-1 h-8 rounded-full text-xs ${
+                restBetweenExercises === 60 ? 'bg-accent text-bg-deep' : 'bg-bg-surface text-text-secondary'
+              }`}
+            >
+              1:00
+            </button>
+            <button
+              onClick={() => setRestBetweenExercises(90)}
+              className={`flex-1 h-8 rounded-full text-xs ${
+                restBetweenExercises === 90 ? 'bg-accent text-bg-deep' : 'bg-bg-surface text-text-secondary'
+              }`}
+            >
+              1:30
+            </button>
+            <button
+              onClick={() => setRestBetweenExercises(120)}
+              className={`flex-1 h-8 rounded-full text-xs ${
+                restBetweenExercises === 120 ? 'bg-accent text-bg-deep' : 'bg-bg-surface text-text-secondary'
+              }`}
+            >
+              2:00
+            </button>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <PillButton variant="secondary" size="sm" onClick={onCancel}>Cancelar</PillButton>
+          <PillButton 
+            variant="primary" 
+            size="sm" 
+            onClick={handleSave} 
+            disabled={selectedExerciseIds.length < 2}
+          >
+            {initialSuperset ? 'Guardar' : 'Crear Superserie'}
           </PillButton>
         </div>
       </div>
@@ -253,10 +489,11 @@ function ExerciseForm({ onSave, onCancel }: ExerciseFormProps) {
       <div className="flex flex-col gap-3">
         <div>
           <label className="text-xs text-text-secondary mb-2 block">Ejercicios Predefinidos</label>
-          <div className="flex flex-wrap gap-2">
+          <div data-testid="preset-exercises" className="flex flex-wrap gap-2">
             {PRESET_EXERCISES.map((preset) => (
               <button
                 key={preset}
+                data-testid={`preset-exercise-${preset}`}
                 onClick={() => handlePresetSelect(preset)}
                 className={`px-3 py-2 rounded-full text-sm flex items-center gap-1 transition-all ${
                   selectedPreset === preset 
@@ -280,6 +517,7 @@ function ExerciseForm({ onSave, onCancel }: ExerciseFormProps) {
         <div>
           <label className="text-xs text-text-secondary mb-1 block">Ejercicio Personalizado</label>
           <input
+            data-testid="custom-exercise-input"
             type="text"
             value={customName}
             onChange={(e) => {
@@ -294,7 +532,7 @@ function ExerciseForm({ onSave, onCancel }: ExerciseFormProps) {
         <div className="flex gap-4">
           <div className="flex-1">
             <label className="text-xs text-text-secondary mb-1 block">Series</label>
-            <div className="flex items-center gap-2">
+            <div data-testid="sets-control" className="flex items-center gap-2">
               <button onClick={() => setTargetSets(Math.max(1, targetSets - 1))} className="w-8 h-8 rounded-full bg-bg-surface text-text-secondary">-</button>
               <span className="text-text-primary font-mono w-8 text-center">{targetSets}</span>
               <button onClick={() => setTargetSets(targetSets + 1)} className="w-8 h-8 rounded-full bg-bg-surface text-text-secondary">+</button>
@@ -302,7 +540,7 @@ function ExerciseForm({ onSave, onCancel }: ExerciseFormProps) {
           </div>
           <div className="flex-1">
             <label className="text-xs text-text-secondary mb-1 block">Repeticiones</label>
-            <div className="flex items-center gap-2">
+            <div data-testid="reps-control" className="flex items-center gap-2">
               <button onClick={() => setTargetReps(Math.max(1, targetReps - 1))} className="w-8 h-8 rounded-full bg-bg-surface text-text-secondary">-</button>
               <span className="text-text-primary font-mono w-8 text-center">{targetReps}</span>
               <button onClick={() => setTargetReps(targetReps + 1)} className="w-8 h-8 rounded-full bg-bg-surface text-text-secondary">+</button>
@@ -313,6 +551,7 @@ function ExerciseForm({ onSave, onCancel }: ExerciseFormProps) {
         <div className="flex items-center justify-between">
           <label className="text-sm text-text-secondary">Al fallo</label>
           <button
+            data-testid="failure-toggle"
             onClick={() => setToFailure(!toFailure)}
             className={`w-12 h-7 rounded-full relative transition-all ${toFailure ? 'bg-accent' : 'bg-bg-surface'}`}
           >
@@ -322,7 +561,7 @@ function ExerciseForm({ onSave, onCancel }: ExerciseFormProps) {
 
         <div>
           <label className="text-xs text-text-secondary mb-1 block">Descanso</label>
-          <div className="flex gap-2">
+          <div data-testid="rest-selector" className="flex gap-2">
             <button
               onClick={() => setRestSeconds(90)}
               className={`flex-1 h-10 rounded-full text-sm ${
@@ -345,6 +584,7 @@ function ExerciseForm({ onSave, onCancel }: ExerciseFormProps) {
         <div className="flex gap-2">
           <PillButton variant="secondary" size="sm" onClick={onCancel}>Cancelar</PillButton>
           <PillButton 
+            data-testid="add-exercise-confirm-btn"
             variant="primary" 
             size="sm" 
             onClick={handleSave} 
@@ -371,21 +611,36 @@ interface RoutineCardProps {
 function RoutineCard({ routine, isExpanded, onToggle, onEdit, onDelete }: RoutineCardProps) {
   const [activeExercise, setActiveExercise] = useState(0);
 
+  const getSupersetForExercise = (exerciseId: string) => {
+    return routine.supersets?.find(s => s.exerciseIds.includes(exerciseId));
+  };
+
+  const getSupersetExercises = (superset: SupersetGroup) => {
+    return superset.exerciseIds
+      .map(id => routine.exercises.find(e => e.id === id))
+      .filter(Boolean);
+  };
+
   return (
-    <div className="p-4 rounded-card bg-bg-surface border border-border-subtle">
+    <div data-testid={`routine-card-${routine.id}`} className="p-4 rounded-card bg-bg-surface border border-border-subtle">
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-full bg-accent-glow flex items-center justify-center text-accent">
           <Dumbbell className="w-5 h-5" />
         </div>
         <div className="flex-1" onClick={onToggle}>
-          <h3 className="text-text-primary font-semibold">{routine.name}</h3>
-          <p className="text-text-secondary text-sm">{routine.exercises.length} ejercicios</p>
+          <h3 data-testid="routine-name" className="text-text-primary font-semibold">{routine.name}</h3>
+          <p data-testid="routine-exercises-count" className="text-text-secondary text-sm">
+            {routine.exercises.length} ejercicios
+            {routine.supersets && routine.supersets.length > 0 && (
+              <span className="ml-2 text-accent">· {routine.supersets.length} superserie{routine.supersets.length > 1 ? 's' : ''}</span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit} className="p-2 rounded-full text-text-secondary hover:text-accent">
+          <button data-testid="edit-routine-btn" onClick={onEdit} className="p-2 rounded-full text-text-secondary hover:text-accent">
             <Edit2 className="w-4 h-4" />
           </button>
-          <button onClick={onDelete} className="p-2 rounded-full text-text-secondary hover:text-danger">
+          <button data-testid="delete-routine-btn" onClick={onDelete} className="p-2 rounded-full text-text-secondary hover:text-danger">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -393,32 +648,67 @@ function RoutineCard({ routine, isExpanded, onToggle, onEdit, onDelete }: Routin
 
       {isExpanded && routine.exercises.length > 0 && (
         <div className="mt-4">
+          {routine.supersets && routine.supersets.length > 0 && (
+            <div className="mb-3">
+              {routine.supersets.map((superset) => (
+                <div key={superset.id} className="p-3 rounded-card bg-accent/10 border border-accent/30 mb-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Link className="w-3 h-3 text-accent" />
+                    <span className="text-xs font-medium text-accent">{superset.name}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {getSupersetExercises(superset).map((exercise) => exercise && (
+                      <div key={exercise.id} className="flex items-center gap-2 text-sm">
+                        <span className="text-accent">{getExerciseIcon(exercise.name)}</span>
+                        <span className="text-text-primary">{exercise.name}</span>
+                        <span className="text-text-secondary text-xs">{exercise.targetSets}x{exercise.targetReps}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
           <div className="flex gap-1 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-            {routine.exercises.map((exercise, index) => (
-              <button
-                key={exercise.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveExercise(index);
-                }}
-                className={`px-3 py-2 rounded-full text-sm whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                  activeExercise === index
-                    ? 'bg-accent text-bg-deep'
-                    : 'bg-bg-elevated text-text-secondary'
-                }`}
-              >
-                <span className={activeExercise === index ? 'text-bg-deep' : 'text-accent'}>
-                  {getExerciseIcon(exercise.name)}
-                </span>
-                {exercise.name}
-              </button>
-            ))}
+            {routine.exercises.map((exercise, index) => {
+              const superset = getSupersetForExercise(exercise.id);
+              if (superset && routine.supersets?.indexOf(superset) !== routine.supersets?.lastIndexOf(superset)) {
+                const firstInSuperset = superset.exerciseIds[0];
+                if (exercise.id !== firstInSuperset) return null;
+              }
+              
+              return (
+                <button
+                  key={exercise.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveExercise(index);
+                  }}
+                  className={`px-3 py-2 rounded-full text-sm whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    activeExercise === index
+                      ? 'bg-accent text-bg-deep'
+                      : 'bg-bg-elevated text-text-secondary'
+                  }`}
+                >
+                  <span className={activeExercise === index ? 'text-bg-deep' : 'text-accent'}>
+                    {getExerciseIcon(exercise.name)}
+                  </span>
+                  {exercise.name}
+                </button>
+              );
+            })}
           </div>
           {routine.exercises[activeExercise] && (
             <div className="mt-3 p-3 rounded-card bg-bg-elevated">
               <div className="flex items-center gap-3">
                 <span className="text-accent">{getExerciseIcon(routine.exercises[activeExercise].name)}</span>
                 <span className="flex-1 text-text-primary font-medium">{routine.exercises[activeExercise].name}</span>
+                {getSupersetForExercise(routine.exercises[activeExercise].id) && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent flex items-center gap-1">
+                    <Link className="w-3 h-3" /> Superserie
+                  </span>
+                )}
               </div>
               <div className="flex gap-4 mt-2 text-sm">
                 <span className="text-text-secondary">

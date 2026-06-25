@@ -21,7 +21,7 @@ function BottomNav({
   ];
   
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-bg-surface border-t border-border-subtle z-50">
+    <nav data-testid="bottom-nav" className="fixed bottom-0 left-0 right-0 bg-bg-surface border-t border-border-subtle z-50">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -29,6 +29,7 @@ function BottomNav({
           return (
             <button
               key={tab.id}
+              data-testid={`tab-${tab.id}`}
               onClick={() => onTabChange(tab.id)}
               className={`flex flex-col items-center justify-center gap-1 px-4 py-2 transition-all duration-150 touch-target ${isActive ? 'text-accent' : 'text-text-secondary'}`}
             >
@@ -44,7 +45,7 @@ function BottomNav({
 
 function Header() {
   return (
-    <header className="fixed top-0 left-0 right-0 bg-bg-deep/95 backdrop-blur-sm border-b border-border-subtle z-50">
+    <header data-testid="app-header" className="fixed top-0 left-0 right-0 bg-bg-deep/95 backdrop-blur-sm border-b border-border-subtle z-50">
       <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">

@@ -21,13 +21,55 @@
 | Feature | Description |
 |---------|-------------|
 | **Routines** | Create custom workout routines with exercises, sets, reps & rest times |
+| **Supersets** | Group two or more exercises as a single unit for advanced training |
 | **Calendar** | Plan your workouts day-by-day with weekly navigation |
 | **Workout Runner** | Execute workouts with real-time set tracking & rest timer |
+| **Weight per Set** | Track weight for each individual set during workouts |
+| **Failure Tracking** | Log reps achieved for exercises performed to failure |
 | **Statistics** | Track weekly workouts, streaks & exercise completion |
 | **Progress Charts** | Visualize strength gains over time with interactive graphs |
+| **Failure Charts** | Track progression of reps for exercises performed to failure |
 | **Backup** | Export/import all data as JSON |
 | **PWA** | Install on mobile for a native app-like experience |
 | **Dark Theme** | Modern pill-styled dark UI with vibrant orange accents |
+
+---
+
+## What's New in v1.1
+
+### Superseries
+- Create supersets grouping two or more exercises together
+- Supersets are displayed as grouped cards with visual indicators
+- Rest timer between exercises within a superset
+- Visual distinction in workout runner and routine cards
+
+### Weight per Set
+- Track weight for each individual set during workouts
+- Visual history of completed sets with weight and reps
+- Required weight input before completing a set
+- Set-by-set progression tracking
+
+### Failure Exercise Tracking
+- Log actual reps achieved for exercises performed to failure
+- Dedicated chart for tracking failure exercise progression
+- Statistics: last reps, best record, and average
+- Visual indicators for failure exercises in workout runner
+
+### DOM Test Identifiers
+- Added `data-testid` attributes to all interactive elements and key containers
+- Enables robust end-to-end and integration testing with selectors like:
+  - Navigation: `bottom-nav`, `tab-calendar`, `tab-routines`, `tab-dashboard`
+  - Calendar: `calendar-title`, `week-days-grid`, `day-cell-{date}`, `prev-week-btn`, `next-week-btn`
+  - Workout Runner: `workout-routine-name`, `current-exercise-card`, `complete-set-btn`, `rest-timer`, `weight-input`, `reps-input`
+  - Routines: `routines-title`, `new-routine-btn`, `routine-card-{id}`, `routine-name-input`, `save-routine-btn`, `add-superset-btn`
+  - Dashboard: `dashboard-title`, `stat-card-week`, `weekly-chart`, `exercise-select`, `weight-chart`, `failure-exercise-select`, `failure-chart`, `export-btn`, `import-btn`
+
+### Component Updates
+- `StatCard` now accepts `data-testid` prop for test targeting
+- `PillButton` passes through all native button attributes including `data-testid`
+- All form inputs, toggles, and action buttons are now testable
+- New `SupersetForm` component for creating/editing supersets
+- New `CompletedSet` type for tracking weight and reps per set
 
 ---
 
