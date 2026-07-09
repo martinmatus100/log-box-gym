@@ -186,11 +186,34 @@ export const useStore = create<AppState>()(
     {
       name: 'logboxgym_store',
       storage: createJSONStorage(() => zustandStorage),
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0) {
+          const state = persistedState || {};
+          return {
+            routines: Array.isArray(state.routines) ? state.routines : [],
+            dayWorkouts: Array.isArray(state.dayWorkouts) ? state.dayWorkouts : [],
+            settings: {
+              restTimerDuration: state.settings?.restTimerDuration ?? 120,
+              weightUnit: state.settings?.weightUnit ?? 'kg',
+              roundDuration: state.settings?.roundDuration ?? 180,
+            },
+          };
+        }
+        return persistedState;
+      },
       partialize: (state) => ({
         routines: state.routines,
         dayWorkouts: state.dayWorkouts,
         settings: state.settings,
       }),
+      onRehydrateStorage: () => {
+        return (state, error) => {
+          if (error) {
+            console.error('[LogBoxGym] Error al restaurar datos:', error);
+          }
+        };
+      },
     }
   )
 );

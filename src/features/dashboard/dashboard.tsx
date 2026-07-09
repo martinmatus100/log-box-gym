@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Dumbbell, Flame, CalendarDays, Check, Download, Upload, TrendingUp, Zap } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Dumbbell, Flame, CalendarDays, Check, Download, Upload, TrendingUp, Zap, Trophy, Target } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useStore } from '../../store/useStore';
 import { StatCard, PillButton } from '../../shared/components';
-import { formatDate } from '../../shared/utils/storage';
+import { formatDate, getBackupInfo, restoreFromBackup } from '../../shared/utils/storage';
 
 export function DashboardPage() {
   const dayWorkouts = useStore(state => state.dayWorkouts);
@@ -16,6 +16,7 @@ export function DashboardPage() {
   const [recentWorkouts, setRecentWorkouts] = useState<any[]>([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importError, setImportError] = useState('');
+  const [backupInfo, setBackupInfo] = useState<{ timestamp: number; routines: number; workouts: number }[]>([]);
   const [selectedExercise, setSelectedExercise] = useState('');
   const [weightHistory, setWeightHistory] = useState<{ date: string; weight: number }[]>([]);
   const [exerciseOptions, setExerciseOptions] = useState<string[]>([]);
@@ -23,6 +24,8 @@ export function DashboardPage() {
   const [selectedFailureExercise, setSelectedFailureExercise] = useState('');
   const [failureExerciseOptions, setFailureExerciseOptions] = useState<string[]>([]);
   const [failureHistory, setFailureHistory] = useState<{ date: string; reps: number; weight: number }[]>([]);
+  
+  const [exerciseProgress, setExerciseProgress] = useState<{ name: string; best: number; latest: number }[]>([]);
   
   const exportData = () => {
     const data = {
@@ -69,6 +72,8 @@ export function DashboardPage() {
   };
   
   useEffect(() => {
+    setBackupInfo(getBackupInfo());
+    
     const today = formatDate(new Date());
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -120,7 +125,7 @@ export function DashboardPage() {
     
     const failureExercises = [...new Set(
       dayWorkouts.flatMap(w => w.exercises
-        .filter((e: any) => e.toFailure && e.completedSets && e.completedSets.length > 0)
+        .filter((e: any) => e.toFailure && Array.isArray(e.completedSets) && e.completedSets.length > 0)
         .map((e: any) => e.name)
       )
     )];
@@ -130,7 +135,7 @@ export function DashboardPage() {
       const history = dayWorkouts
         .filter(w => w.status === 'completed')
         .flatMap(w => w.exercises
-          .filter((e: any) => e.name === selectedExercise && e.completedSets && e.completedSets.length > 0)
+          .filter((e: any) => e.name === selectedExercise && Array.isArray(e.completedSets) && e.completedSets.length > 0)
           .flatMap((e: any) => e.completedSets.map((set: any) => ({
             date: w.date,
             weight: set.weight,
@@ -147,7 +152,7 @@ export function DashboardPage() {
       const history = dayWorkouts
         .filter(w => w.status === 'completed')
         .flatMap(w => w.exercises
-          .filter((e: any) => e.name === selectedFailureExercise && e.toFailure && e.completedSets && e.completedSets.length > 0)
+          .filter((e: any) => e.name === selectedFailureExercise && e.toFailure && Array.isArray(e.completedSets) && e.completedSets.length > 0)
           .flatMap((e: any) => e.completedSets.map((set: any) => ({
             date: w.date,
             reps: set.reps,
@@ -160,6 +165,34 @@ export function DashboardPage() {
     } else if (selectedFailureExercise) {
       setFailureHistory([]);
     }
+    
+    const completedWorkouts = dayWorkouts
+      .filter(w => w.status === 'completed')
+      .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+    
+    if (completedWorkouts.length > 0) {
+      const lastWorkout = completedWorkouts[0];
+      const progressData = lastWorkout.exercises
+        .filter((e: any) => e.completedSets && e.completedSets.length > 0)
+        .map((exercise: any) => {
+          const allSets = dayWorkouts
+            .filter(w => w.status === 'completed')
+            .flatMap(w => w.exercises
+              .filter((e: any) => e.name === exercise.name && Array.isArray(e.completedSets))
+              .flatMap((e: any) => e.completedSets.map((s: any) => s.weight))
+            );
+          
+          const best = allSets.length > 0 ? Math.max(...allSets) : 0;
+          const latestSets = exercise.completedSets || [];
+          const latest = latestSets.length > 0 ? latestSets[latestSets.length - 1].weight : 0;
+          
+          return { name: exercise.name, best, latest };
+        });
+      
+      setExerciseProgress(progressData);
+    } else {
+      setExerciseProgress([]);
+    }
   }, [dayWorkouts, routines, selectedExercise, selectedFailureExercise]);
   
   return (
@@ -169,33 +202,33 @@ export function DashboardPage() {
         Estadísticas
       </h1>
       
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <StatCard
           data-testid="stat-card-week"
-          icon={<CalendarDays className="w-6 h-6" />}
+          icon={<CalendarDays className="w-5 h-5" />}
           value={stats.weekWorkouts}
           label="Esta Semana"
         />
         <StatCard
           data-testid="stat-card-streak"
-          icon={<Flame className="w-6 h-6" />}
+          icon={<Flame className="w-5 h-5" />}
           value={stats.streak}
           label="Racha"
           variant="accent"
         />
       </div>
       
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <StatCard
           data-testid="stat-card-exercises"
-          icon={<Check className="w-6 h-6" />}
+          icon={<Check className="w-5 h-5" />}
           value={stats.weekExercises}
           label="Ejercicios Completados"
           variant="accent"
         />
         <StatCard
           data-testid="stat-card-routines"
-          icon={<Dumbbell className="w-6 h-6" />}
+          icon={<Dumbbell className="w-5 h-5" />}
           value={stats.totalRoutines}
           label="Rutinas Creadas"
           variant="accent"
@@ -203,20 +236,77 @@ export function DashboardPage() {
       </div>
       
       <div className="p-4 rounded-card bg-bg-surface border border-border-subtle">
-        <h2 className="text-lg font-semibold text-text-primary mb-4">Esta Semana</h2>
-        <div data-testid="weekly-chart" className="flex items-end justify-between gap-2 h-32 px-2">
-          {weeklyData.map((item, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-full flex items-end justify-center h-24">
-                <div
-                  className="w-full max-w-8 rounded-full bg-accent"
-                  style={{ height: `${Math.max(4, (item.value / item.max) * 100)}%` }}
-                />
-              </div>
-              <span className="text-xs text-text-secondary">{item.label}</span>
-            </div>
-          ))}
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="w-5 h-5 text-accent" />
+          <h2 className="text-lg font-semibold text-text-primary">Progreso Última Rutina</h2>
         </div>
+        {exerciseProgress.length > 0 ? (
+          <>
+            <div className="flex gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-accent" />
+                <span className="text-xs text-text-secondary">Último peso</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-xs text-text-secondary">Mejor peso</span>
+              </div>
+            </div>
+            <div data-testid="exercise-progress-chart" className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={exerciseProgress}
+                  layout="vertical"
+                  margin={{ left: 10, right: 20, top: 5, bottom: 5 }}
+                  barGap={4}
+                >
+                  <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 10 }} unit="kg" />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                    width={100}
+                    tickFormatter={(val: string) => val.length > 14 ? val.slice(0, 14) + '…' : val}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '12px' }}
+                    formatter={(value: number, name: string) => [`${value}kg`, name === 'latest' ? 'Último' : 'Mejor']}
+                  />
+                  <Bar dataKey="latest" name="latest" radius={[0, 4, 4, 0]} barSize={12}>
+                    {exerciseProgress.map((_, index) => (
+                      <Cell key={`latest-${index}`} fill="#FF6B35" />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="best" name="best" radius={[0, 4, 4, 0]} barSize={12}>
+                    {exerciseProgress.map((_, index) => (
+                      <Cell key={`best-${index}`} fill="#22c55e" />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              {exerciseProgress.map((ex, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-card bg-bg-elevated">
+                  <span className="text-sm text-text-primary truncate max-w-[140px]">{ex.name}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <Target className="w-3.5 h-3.5 text-accent" />
+                      <span className="text-sm font-mono font-bold text-accent">{ex.latest}kg</span>
+                    </div>
+                    <span className="text-text-secondary text-xs">vs</span>
+                    <div className="flex items-center gap-1">
+                      <Trophy className="w-3.5 h-3.5 text-green-500" />
+                      <span className="text-sm font-mono font-bold text-green-500">{ex.best}kg</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-text-secondary text-sm text-center py-6">Completá una rutina para ver tu progreso</p>
+        )}
       </div>
 
       {exerciseOptions.length > 0 && (
@@ -372,7 +462,7 @@ export function DashboardPage() {
       
       <div className="mt-4 pt-4 border-t border-border-subtle">
         <h2 className="text-lg font-semibold text-text-primary mb-4">Backup</h2>
-        <div className="flex gap-3">
+        <div className="flex gap-3 mb-3">
           <PillButton data-testid="export-btn" variant="secondary" onClick={exportData} className="flex-1">
             <Download className="w-4 h-4 mr-2" />Exportar
           </PillButton>
@@ -380,6 +470,31 @@ export function DashboardPage() {
             <Upload className="w-4 h-4 mr-2" />Importar
           </PillButton>
         </div>
+        {backupInfo.length > 0 && (
+          <div className="p-3 rounded-card bg-bg-elevated border border-border-subtle">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-text-secondary">Último backup automático</span>
+              <span className="text-xs text-text-secondary">
+                {new Date(backupInfo[backupInfo.length - 1].timestamp).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+            <p className="text-[10px] text-text-secondary mb-2">
+              {backupInfo[backupInfo.length - 1].routines} rutinas, {backupInfo[backupInfo.length - 1].workouts} entrenamientos
+            </p>
+            <PillButton
+              variant="danger"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                if (restoreFromBackup()) {
+                  window.location.reload();
+                }
+              }}
+            >
+              Restaurar último backup
+            </PillButton>
+          </div>
+        )}
       </div>
       
       {showImportModal && (
