@@ -22,12 +22,12 @@ export function StatCard({ icon, value, label, variant = 'default', 'data-testid
   };
 
   return (
-    <div data-testid={testId} className={`flex flex-col items-center p-4 rounded-card ${variantStyles[variant]}`}>
-      <div className={`mb-2 ${iconStyles[variant]}`}>
+    <div data-testid={testId} className={`flex flex-col items-center p-2.5 rounded-card ${variantStyles[variant]}`}>
+      <div className={`mb-1 ${iconStyles[variant]}`}>
         {icon}
       </div>
-      <span data-testid="stat-value" className="text-2xl font-bold text-text-primary">{value}</span>
-      <span data-testid="stat-label" className="text-xs text-text-secondary mt-1">{label}</span>
+      <span data-testid="stat-value" className="text-lg font-bold text-text-primary">{value}</span>
+      <span data-testid="stat-label" className="text-[10px] text-text-secondary mt-0.5 leading-tight">{label}</span>
     </div>
   );
 }

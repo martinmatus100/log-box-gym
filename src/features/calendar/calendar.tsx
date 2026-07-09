@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Play, Check, X, Zap, Link } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Play, Check, X, Zap, Link, ChevronDown, ChevronUp } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { formatDate, formatTime } from '../../shared/utils/storage';
 import { Routine, DayWorkout, CompletedExercise, CompletedSet } from '../../shared/types';
@@ -8,6 +8,7 @@ import { PillButton } from '../../shared/components';
 
 export function CalendarPage() {
   const { selectedDate, selectDate, getDayWorkoutsForDate, deleteDayWorkout, startWorkout, finishWorkout } = useStore();
+  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(true);
   
   const dayWorkouts = getDayWorkoutsForDate(selectedDate);
   const today = formatDate(new Date());
@@ -33,35 +34,44 @@ export function CalendarPage() {
       </div>
       
       <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button data-testid="prev-week-btn" onClick={() => { const d = new Date(currentDate); d.setDate(currentDate.getDate() - 7); selectDate(formatDate(d)); }} className="p-2 rounded-full bg-bg-elevated text-text-secondary active:scale-95">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex flex-col items-center">
-            <span className="text-lg font-semibold text-text-primary capitalize">{monthYear}</span>
-            {selectedDate !== today && <button data-testid="go-to-today-btn" onClick={() => selectDate(formatDate(new Date()))} className="text-xs text-accent">Ir a hoy</button>}
+        <div
+          data-testid="toggle-calendar-btn"
+          onClick={() => setIsCalendarCollapsed(!isCalendarCollapsed)}
+          className="w-full flex items-center justify-between mb-3 p-2 rounded-card bg-bg-surface border border-border-subtle cursor-pointer active:scale-98"
+        >
+          <div className="flex items-center gap-2">
+            <button data-testid="prev-week-btn" onClick={(e) => { e.stopPropagation(); const d = new Date(currentDate); d.setDate(currentDate.getDate() - 7); selectDate(formatDate(d)); }} className="p-1 rounded-full bg-bg-elevated text-text-secondary active:scale-95">
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-sm font-semibold text-text-primary capitalize">{monthYear}</span>
+            <button data-testid="next-week-btn" onClick={(e) => { e.stopPropagation(); const d = new Date(currentDate); d.setDate(currentDate.getDate() + 7); selectDate(formatDate(d)); }} className="p-1 rounded-full bg-bg-elevated text-text-secondary active:scale-95">
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <button data-testid="next-week-btn" onClick={() => { const d = new Date(currentDate); d.setDate(currentDate.getDate() + 7); selectDate(formatDate(d)); }} className="p-2 rounded-full bg-bg-elevated text-text-secondary active:scale-95">
-            <ChevronRight className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {selectedDate !== today && <button data-testid="go-to-today-btn" onClick={(e) => { e.stopPropagation(); selectDate(formatDate(new Date())); }} className="text-[10px] text-accent">Ir a hoy</button>}
+            {isCalendarCollapsed ? <ChevronDown className="w-4 h-4 text-text-secondary" /> : <ChevronUp className="w-4 h-4 text-text-secondary" />}
+          </div>
         </div>
         
-        <div data-testid="week-days-grid" className="grid grid-cols-7 gap-1.5 mb-4">
-          {weekDays.map((date) => {
-            const dateStr = formatDate(date);
-            const isSelected = dateStr === selectedDate;
-            const isToday = dateStr === today;
-            const hasWorkout = getDayWorkoutsForDate(dateStr).length > 0;
-            
-            return (
-              <button key={dateStr} data-testid={`day-cell-${dateStr}`} onClick={() => selectDate(dateStr)} className={`flex flex-col items-center p-2 rounded-card active:scale-95 ${isSelected ? 'bg-accent text-bg-deep' : isToday ? 'bg-accent-glow border border-accent' : 'bg-bg-surface'}`}>
-                <span className={`text-[10px] font-medium ${isSelected ? '' : 'text-text-secondary'}`}>{dayNames[date.getDay()]}</span>
-                <span className={`text-sm font-bold mt-0.5 ${isSelected ? '' : 'text-text-primary'}`}>{date.getDate()}</span>
-                {hasWorkout && !isSelected && <div className="w-1.5 h-1.5 rounded-full bg-accent mt-0.5" />}
-              </button>
-            );
-          })}
-        </div>
+        {!isCalendarCollapsed && (
+          <div data-testid="week-days-grid" className="grid grid-cols-7 gap-1.5 mb-4">
+            {weekDays.map((date) => {
+              const dateStr = formatDate(date);
+              const isSelected = dateStr === selectedDate;
+              const isToday = dateStr === today;
+              const hasWorkout = getDayWorkoutsForDate(dateStr).length > 0;
+              
+              return (
+                <button key={dateStr} data-testid={`day-cell-${dateStr}`} onClick={() => selectDate(dateStr)} className={`flex flex-col items-center p-2 rounded-card active:scale-95 ${isSelected ? 'bg-accent text-bg-deep' : isToday ? 'bg-accent-glow border border-accent' : 'bg-bg-surface'}`}>
+                  <span className={`text-[10px] font-medium ${isSelected ? '' : 'text-text-secondary'}`}>{dayNames[date.getDay()]}</span>
+                  <span className={`text-sm font-bold mt-0.5 ${isSelected ? '' : 'text-text-primary'}`}>{date.getDate()}</span>
+                  {hasWorkout && !isSelected && <div className="w-1.5 h-1.5 rounded-full bg-accent mt-0.5" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       
       <DayWorkoutsList date={selectedDate} dayWorkouts={dayWorkouts} onDelete={deleteDayWorkout} onStart={startWorkout} onFinish={finishWorkout} />
@@ -182,7 +192,22 @@ function WorkoutRunner({ workout, onFinish }: any) {
   const currentRoutine = routines.find((r) => r.id === currentWorkout.routineId);
   const supersets = currentRoutine?.supersets || [];
   
-  const [activeTimer, setActiveTimer] = useState<{ time: number; total: number; active: boolean } | null>(null);
+  const [activeTimer, setActiveTimer] = useState<{ time: number; total: number; active: boolean } | null>(() => {
+    try {
+      const saved = localStorage.getItem('logboxgym_timer');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.active && parsed.total > 0) {
+          const elapsed = Math.floor((Date.now() - parsed.startedAt) / 1000);
+          const remaining = Math.max(0, parsed.time - elapsed);
+          if (remaining > 0) {
+            return { time: remaining, total: parsed.total, active: true };
+          }
+        }
+      }
+    } catch {}
+    return null;
+  });
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
@@ -218,15 +243,19 @@ function WorkoutRunner({ workout, onFinish }: any) {
   
   useEffect(() => {
     if (activeTimer && activeTimer.active) {
+      localStorage.setItem('logboxgym_timer', JSON.stringify({ ...activeTimer, startedAt: Date.now() }));
       intervalRef.current = window.setInterval(() => {
         setActiveTimer(prev => {
           if (!prev || prev.time <= 0) {
             clearInterval(intervalRef.current!);
+            localStorage.removeItem('logboxgym_timer');
             playBeep();
             return { ...prev, active: false };
           }
           if (prev.time <= 4 && prev.time > 0) playCountdown();
-          return { ...prev, time: prev.time - 1 };
+          const next = { ...prev, time: prev.time - 1 };
+          localStorage.setItem('logboxgym_timer', JSON.stringify({ ...next, startedAt: Date.now() }));
+          return next;
         });
       }, 1000);
     }
@@ -256,11 +285,13 @@ function WorkoutRunner({ workout, onFinish }: any) {
     setWeight('');
     setReps('');
     
-    setActiveTimer({ time: currentExercise.restSeconds, total: currentExercise.restSeconds, active: true });
+    const newTimer = { time: currentExercise.restSeconds, total: currentExercise.restSeconds, active: true };
+    setActiveTimer(newTimer);
   };
   
   const skipTimer = () => {
     setActiveTimer(null);
+    localStorage.removeItem('logboxgym_timer');
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
   
