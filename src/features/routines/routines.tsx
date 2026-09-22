@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Edit2, X, Dumbbell, Target, Heart, Zap, Flame, Star, Award, Activity, Users, Shield, Link, Check } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Dumbbell, Target, Heart, Zap, Flame, Star, Award, Activity, Users, Shield, Link, Check, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { PillButton } from '../../shared/components';
 import { Routine, RoutineExercise, SupersetGroup, REST_TIMER_OPTIONS, PRESET_EXERCISES } from '../../shared/types';
@@ -144,6 +144,16 @@ function RoutineForm({ initialRoutine, onSave, onCancel }: RoutineFormProps) {
     })).filter(s => s.exerciseIds.length >= 2));
   };
 
+  const moveExercise = (exerciseId: string, direction: 'up' | 'down') => {
+    const idx = exercises.findIndex(e => e.id === exerciseId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= exercises.length) return;
+    const newExercises = [...exercises];
+    [newExercises[idx], newExercises[targetIdx]] = [newExercises[targetIdx], newExercises[idx]];
+    setExercises(newExercises);
+  };
+
   const addSuperset = (superset: SupersetGroup) => {
     if (editingSuperset) {
       setSupersets(supersets.map(s => s.id === editingSuperset.id ? superset : s));
@@ -257,12 +267,32 @@ function RoutineForm({ initialRoutine, onSave, onCancel }: RoutineFormProps) {
               </div>
             ))}
             
-            {exercises.map((exercise) => {
+            {exercises.map((exercise, exerciseIndex) => {
               const superset = getSupersetForExercise(exercise.id);
               if (superset) return null;
               
+              const standaloneIndex = exercises.filter((e, i) => i <= exerciseIndex && !getSupersetForExercise(e.id)).length - 1;
+              const standaloneCount = exercises.filter(e => !getSupersetForExercise(e.id)).length;
+              
               return (
                 <div key={exercise.id} data-testid={`exercise-item-${exercise.id}`} className="flex items-center gap-2 p-3 rounded-full bg-bg-elevated">
+                  <div className="flex flex-col">
+                    <button
+                      onClick={() => moveExercise(exercise.id, 'up')}
+                      disabled={standaloneIndex === 0}
+                      className="p-0.5 text-text-secondary hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => moveExercise(exercise.id, 'down')}
+                      disabled={standaloneIndex === standaloneCount - 1}
+                      className="p-0.5 text-text-secondary hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <span className="text-xs text-text-secondary font-mono w-5 text-center">{standaloneIndex + 1}</span>
                   <span className="text-accent">{getExerciseIcon(exercise.name)}</span>
                   <span className="flex-1 text-text-primary">{exercise.name}</span>
                   <span className="text-text-secondary text-sm">{exercise.targetSets}x{exercise.targetReps}</span>

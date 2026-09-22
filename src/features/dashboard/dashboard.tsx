@@ -26,6 +26,8 @@ export function DashboardPage() {
   const [failureHistory, setFailureHistory] = useState<{ date: string; reps: number; weight: number }[]>([]);
   
   const [exerciseProgress, setExerciseProgress] = useState<{ name: string; best: number; latest: number }[]>([]);
+  const [selectedProgressRoutine, setSelectedProgressRoutine] = useState('');
+  const [progressRoutineOptions, setProgressRoutineOptions] = useState<{ id: string; name: string }[]>([]);
   
   const exportData = () => {
     const data = {
@@ -170,13 +172,29 @@ export function DashboardPage() {
       .filter(w => w.status === 'completed')
       .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
     
+    const routineMap = new Map<string, { id: string; name: string }>();
+    completedWorkouts.forEach(w => {
+      if (!routineMap.has(w.routineId)) {
+        routineMap.set(w.routineId, { id: w.routineId, name: w.routineName });
+      }
+    });
+    const routineOpts = Array.from(routineMap.values());
+    setProgressRoutineOptions(routineOpts);
+    
     if (completedWorkouts.length > 0) {
-      const lastWorkout = completedWorkouts[0];
-      const progressData = lastWorkout.exercises
+      if (!selectedProgressRoutine && routineOpts.length > 0) {
+        setSelectedProgressRoutine(completedWorkouts[0].routineId);
+      }
+      
+      const targetRoutineId = selectedProgressRoutine || completedWorkouts[0].routineId;
+      const targetWorkout = completedWorkouts.find(w => w.routineId === targetRoutineId) || completedWorkouts[0];
+      
+      const sameRoutineWorkouts = completedWorkouts.filter(w => w.routineId === targetWorkout.routineId);
+      
+      const progressData = targetWorkout.exercises
         .filter((e: any) => e.completedSets && e.completedSets.length > 0)
         .map((exercise: any) => {
-          const allSets = dayWorkouts
-            .filter(w => w.status === 'completed')
+          const allSets = sameRoutineWorkouts
             .flatMap(w => w.exercises
               .filter((e: any) => e.name === exercise.name && Array.isArray(e.completedSets))
               .flatMap((e: any) => e.completedSets.map((s: any) => s.weight))
@@ -193,7 +211,7 @@ export function DashboardPage() {
     } else {
       setExerciseProgress([]);
     }
-  }, [dayWorkouts, routines, selectedExercise, selectedFailureExercise]);
+  }, [dayWorkouts, routines, selectedExercise, selectedFailureExercise, selectedProgressRoutine]);
   
   return (
     <div className="flex flex-col gap-6 p-4 pb-24">
@@ -240,6 +258,18 @@ export function DashboardPage() {
           <TrendingUp className="w-5 h-5 text-accent" />
           <h2 className="text-lg font-semibold text-text-primary">Progreso Última Rutina</h2>
         </div>
+        {progressRoutineOptions.length > 1 && (
+          <select
+            data-testid="progress-routine-select"
+            value={selectedProgressRoutine}
+            onChange={(e) => setSelectedProgressRoutine(e.target.value)}
+            className="w-full h-12 px-4 bg-bg-elevated rounded-full border-2 border-border-subtle text-text-primary mb-4"
+          >
+            {progressRoutineOptions.map(r => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        )}
         {exerciseProgress.length > 0 ? (
           <>
             <div className="flex gap-4 mb-4">
